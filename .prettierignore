@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+coverage/
+android/
+ios/
+package-lock.json
+docs/design/DESIGN.md
+docs/product/requirements.md

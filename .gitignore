@@ -1,0 +1,28 @@
+node_modules/
+.expo/
+dist/
+coverage/
+*.tsbuildinfo
+expo-env.d.ts
+
+# Generated native projects (Expo Continuous Native Generation)
+/android/
+/ios/
+
+# Local configuration and signing material
+.env*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+
+# Local tooling
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/.react/
