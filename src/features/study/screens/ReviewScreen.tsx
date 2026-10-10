@@ -8,7 +8,7 @@ import {
   Screen,
   SegmentedControl,
   StateView,
-  spacing,
+  useScrollNavigation,
 } from '@/design-system';
 import type { NavigationKey } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
@@ -31,7 +31,7 @@ export function ReviewScreen({
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('due');
-  const [navSpace, setNavSpace] = useState(120);
+  const navigation = useScrollNavigation({ bottomSafeAreaApplied: true });
   const now = useCurrentTime();
   const hasFlashcards = decks.some((deck) => deck.cards.length);
   const queue = decks
@@ -46,7 +46,11 @@ export function ReviewScreen({
     .filter((item) => item.ids.length);
   return (
     <View style={{ flex: 1 }}>
-      <Screen includeTopInset>
+      <Screen
+        includeTopInset
+        onScroll={navigation.onScroll}
+        bottomPadding={navigation.bottomPadding}
+      >
         <SessionHeader title={t('learning.review')} onBack={() => onNavigate('home')} />
         <AppText tone="secondary">{t('learning.reviewBody')}</AppText>
         {hasFlashcards ? (
@@ -110,13 +114,14 @@ export function ReviewScreen({
           variant="soft"
           onPress={() => onNavigate('library')}
         />
-        <View style={{ height: navSpace + spacing.lg }} />
       </Screen>
       <BottomNavigation
         active="review"
+        visible={navigation.visible}
+        hideProgress={navigation.hideProgress}
         appearance="expressive"
         onNavigate={onNavigate}
-        onHeightChange={setNavSpace}
+        onHeightChange={navigation.onNavigationHeightChange}
       />
     </View>
   );

@@ -51,6 +51,7 @@ export type {
   BottomNavigationProps,
 } from './components/navigation/BottomNavigation';
 export { useResponsiveLayout } from './hooks/useResponsiveLayout';
+export { useScrollNavigation } from './hooks/useScrollNavigation';
 export { progressRatio, getAnswerState, getQuizContentStatus } from './model/state';
 export type { ComponentStatus, ComponentStateProps, AnswerState } from './model/state';
 export type { TopicTone, TextVariant } from './tokens';

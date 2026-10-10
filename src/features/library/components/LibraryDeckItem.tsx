@@ -51,6 +51,13 @@ export function LibraryDeckItem({
     ) : (
       <LibraryArtwork name="stack-books" size={56} />
     );
+  const options = (
+    <IconButton
+      icon="more"
+      label={t('library.options', { title: deck.title })}
+      onPress={onOptions}
+    />
+  );
   return (
     <View style={styles.item}>
       {!deck.cards.length && deck.questions.length ? (
@@ -65,6 +72,7 @@ export function LibraryDeckItem({
                 {deck.subject}
               </AppText>
             </View>
+            <View style={styles.options}>{options}</View>
           </View>
           <AppText variant="bodySmall" tone="secondary">
             {t('common.questions', { count: deck.questions.length })}
@@ -87,26 +95,24 @@ export function LibraryDeckItem({
           tone={tone}
           appearance="expressive"
           artwork={artwork}
+          headerAccessory={options}
           onOpen={onOpen}
         />
       )}
-      <View style={styles.toolbar}>
-        {status ? (
-          <AppText variant="caption" tone="tertiary" style={styles.status}>
-            {status}
-          </AppText>
-        ) : (
-          <View style={styles.status} />
-        )}
-        {entry.preference.favorite ? (
-          <LibraryArtwork name="heart" size={18} tintColor={colors.explore.primary} />
-        ) : null}
-        <IconButton
-          icon="more"
-          label={t('library.options', { title: deck.title })}
-          onPress={onOptions}
-        />
-      </View>
+      {status || entry.preference.favorite ? (
+        <View style={styles.toolbar}>
+          {status ? (
+            <AppText variant="caption" tone="tertiary" style={styles.status}>
+              {status}
+            </AppText>
+          ) : (
+            <View style={styles.status} />
+          )}
+          {entry.preference.favorite ? (
+            <LibraryArtwork name="heart" size={18} tintColor={colors.explore.primary} />
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -114,13 +120,13 @@ const styles = StyleSheet.create({
   item: { gap: spacing.xs },
   toolbar: {
     paddingLeft: spacing.xl,
-    paddingRight: spacing.sm,
+    paddingRight: spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minHeight: 44,
   },
   status: { flex: 1 },
+  options: { alignSelf: 'flex-start', flexShrink: 0 },
   quizDeck: { borderColor: colors.border.subtle, borderWidth: 1 },
   quizHeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   quizContent: { flex: 1, minWidth: 0, gap: spacing.xs },

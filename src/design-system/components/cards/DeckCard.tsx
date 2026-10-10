@@ -20,6 +20,7 @@ export type DeckCardProps = ComponentStateProps & {
   dueCount?: number;
   progress?: number;
   artwork?: ReactNode;
+  headerAccessory?: ReactNode;
   tone?: TopicTone;
   compact?: boolean;
   appearance?: 'default' | 'expressive';
@@ -33,6 +34,7 @@ export function DeckCard({
   dueCount = 0,
   progress = 0,
   artwork,
+  headerAccessory,
   tone = 'yellow',
   compact = false,
   appearance = 'default',
@@ -80,6 +82,7 @@ export function DeckCard({
             </AppText>
           ) : null}
         </View>
+        {headerAccessory ? <View style={styles.headerAccessory}>{headerAccessory}</View> : null}
       </View>
       {compact && status === 'complete' ? (
         <View style={styles.due}>
@@ -158,7 +161,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   smallArtwork: { width: 52, height: 52, borderRadius: radius.md },
-  content: { flex: 1, gap: spacing.xs },
+  content: { flex: 1, minWidth: 0, gap: spacing.xs },
+  headerAccessory: { alignSelf: 'flex-start', flexShrink: 0 },
   metadata: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   footer: {
     flexDirection: 'row',

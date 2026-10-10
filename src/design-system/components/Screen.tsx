@@ -1,13 +1,24 @@
 import type { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import type { ScrollViewProps } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, layout, spacing } from '../tokens';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
-export type ScreenProps = PropsWithChildren<{ includeTopInset?: boolean }>;
+export type ScreenProps = PropsWithChildren<{
+  includeTopInset?: boolean;
+  onScroll?: ScrollViewProps['onScroll'];
+  bottomPadding?: number;
+}>;
 
-export function Screen({ children, includeTopInset = false }: ScreenProps) {
+export function Screen({
+  children,
+  includeTopInset = false,
+  onScroll,
+  bottomPadding = spacing.lg,
+}: ScreenProps) {
   const { gutter } = useResponsiveLayout();
 
   return (
@@ -20,14 +31,19 @@ export function Screen({ children, includeTopInset = false }: ScreenProps) {
         bottom: 'additive',
       }}
     >
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingHorizontal: gutter }]}
+      <Animated.ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingHorizontal: gutter, paddingBottom: bottomPadding },
+        ]}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustContentInsets={false}
         contentInsetAdjustmentBehavior="never"
+        onScroll={onScroll}
+        scrollEventThrottle={onScroll ? 16 : undefined}
       >
         {children}
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -43,7 +59,6 @@ const styles = StyleSheet.create({
     maxWidth: layout.studyMaxWidth,
     alignSelf: 'center',
     flexGrow: 1,
-    paddingBottom: spacing['2xl'],
     gap: spacing['2xl'],
   },
 });

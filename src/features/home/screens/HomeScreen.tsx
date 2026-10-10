@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import type { ScrollView } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -20,6 +22,7 @@ import {
   layout,
   spacing,
   useResponsiveLayout,
+  useScrollNavigation,
 } from '@/design-system';
 import type { NavigationKey } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
@@ -68,12 +71,12 @@ export function HomeScreen({
   const reducedMotion = useReducedMotion();
   const now = useCurrentTime();
   const scroll = useRef<ScrollView>(null);
+  const navigation = useScrollNavigation();
   const [query, setQuery] = useState('');
   const [topic, setTopic] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [allDecksOpen, setAllDecksOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [navigationSpace, setNavigationSpace] = useState(120);
   const searching = Boolean(query.trim() || topic);
   const data = buildHomeData({
     development: __DEV__,
@@ -141,9 +144,11 @@ export function HomeScreen({
     );
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      <ScrollView
+      <Animated.ScrollView
         ref={scroll}
         testID="home-scroll"
+        onScroll={navigation.onScroll}
+        scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustContentInsets={false}
         contentInsetAdjustmentBehavior="never"
@@ -152,7 +157,7 @@ export function HomeScreen({
           {
             paddingHorizontal: gutter,
             paddingTop: Math.max(insets.top, spacing['3xl']),
-            paddingBottom: navigationSpace + spacing['2xl'],
+            paddingBottom: navigation.bottomPadding,
           },
         ]}
       >
@@ -307,12 +312,14 @@ export function HomeScreen({
             </HorizontalGroup>
           </View>
         ) : null}
-      </ScrollView>
+      </Animated.ScrollView>
       <BottomNavigation
         active="home"
+        visible={navigation.visible}
+        hideProgress={navigation.hideProgress}
         appearance="expressive"
         onNavigate={navigate}
-        onHeightChange={setNavigationSpace}
+        onHeightChange={navigation.onNavigationHeightChange}
       />
       <Dialog visible={filtersOpen} title={t('home.filters')} onClose={() => setFiltersOpen(false)}>
         <View style={styles.chips}>

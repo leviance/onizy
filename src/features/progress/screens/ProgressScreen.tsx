@@ -14,6 +14,7 @@ import {
   colors,
   radius,
   spacing,
+  useScrollNavigation,
 } from '@/design-system';
 import type { NavigationKey } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
@@ -39,7 +40,7 @@ export function ProgressScreen({
 }) {
   const { t, formatNumber, formatPercent, formatDate, formatDateTime } = useTranslation();
   const [period, setPeriod] = useState('7');
-  const [navSpace, setNavSpace] = useState(120);
+  const navigation = useScrollNavigation({ bottomSafeAreaApplied: true });
   const now = useCurrentTime();
   const data = learningStatistics(decks, records, period === 'all' ? null : Number(period), now);
   const maximum = Math.max(1, ...data.activity.map((day) => day.count));
@@ -63,7 +64,11 @@ export function ProgressScreen({
   ];
   return (
     <View style={{ flex: 1 }}>
-      <Screen includeTopInset>
+      <Screen
+        includeTopInset
+        onScroll={navigation.onScroll}
+        bottomPadding={navigation.bottomPadding}
+      >
         <View style={styles.header}>
           <IconButton icon="back" label={t('common.back')} onPress={() => onNavigate('home')} />
           <AppText variant="h3" accessibilityRole="header" style={{ flex: 1 }}>
@@ -186,13 +191,14 @@ export function ProgressScreen({
         <AppText variant="caption" tone="secondary">
           {t('learning.sessionOnly')}
         </AppText>
-        <View style={{ height: navSpace + spacing.lg }} />
       </Screen>
       <BottomNavigation
         active="profile"
+        visible={navigation.visible}
+        hideProgress={navigation.hideProgress}
         appearance="expressive"
         onNavigate={onNavigate}
-        onHeightChange={setNavSpace}
+        onHeightChange={navigation.onNavigationHeightChange}
       />
     </View>
   );

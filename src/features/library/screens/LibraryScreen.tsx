@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -16,6 +17,7 @@ import {
   layout,
   spacing,
   useResponsiveLayout,
+  useScrollNavigation,
 } from '@/design-system';
 import type { NavigationKey } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
@@ -76,6 +78,7 @@ export function LibraryScreen({
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const scroll = useRef<ScrollView>(null);
+  const navigation = useScrollNavigation();
   const now = useCurrentTime();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<LibraryFilter>('all');
@@ -85,7 +88,6 @@ export function LibraryScreen({
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [navigationSpace, setNavigationSpace] = useState(120);
   const entries = libraryEntries(decks, schedules, records, preferences, now);
   const matches = selectLibraryEntries(entries, {
     query,
@@ -140,9 +142,11 @@ export function LibraryScreen({
             : 'library.noMatchesBody';
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      <ScrollView
+      <Animated.ScrollView
         ref={scroll}
         testID="library-scroll"
+        onScroll={navigation.onScroll}
+        scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustContentInsets={false}
         contentInsetAdjustmentBehavior="never"
@@ -151,7 +155,7 @@ export function LibraryScreen({
           {
             paddingHorizontal: gutter,
             paddingTop: Math.max(insets.top, spacing['3xl']),
-            paddingBottom: navigationSpace + spacing['2xl'],
+            paddingBottom: navigation.bottomPadding,
           },
         ]}
       >
@@ -289,12 +293,14 @@ export function LibraryScreen({
             />
           </View>
         ) : null}
-      </ScrollView>
+      </Animated.ScrollView>
       <BottomNavigation
         active="library"
+        visible={navigation.visible}
+        hideProgress={navigation.hideProgress}
         appearance="expressive"
         onNavigate={navigate}
-        onHeightChange={setNavigationSpace}
+        onHeightChange={navigation.onNavigationHeightChange}
       />
       <Dialog
         visible={filtersOpen}
