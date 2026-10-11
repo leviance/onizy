@@ -1,6 +1,7 @@
 export type FlashcardDecision = 'again' | 'remembered';
 
 export function isHorizontalSwipe(dx: number, dy: number) {
+  'worklet';
   return (
     Number.isFinite(dx) &&
     Number.isFinite(dy) &&
@@ -9,17 +10,26 @@ export function isHorizontalSwipe(dx: number, dy: number) {
   );
 }
 
+export function getFlashcardSwipeThreshold(width: number) {
+  'worklet';
+  return Math.min(120, Math.max(72, (Number.isFinite(width) && width > 0 ? width : 300) * 0.28));
+}
+
+export function getFlashcardSwipeProgress(dx: number, width: number) {
+  'worklet';
+  if (!Number.isFinite(dx)) return 0;
+  return Math.max(-1, Math.min(1, dx / getFlashcardSwipeThreshold(width)));
+}
+
 export function getFlashcardDecision(
   dx: number,
   dy: number,
   vx: number,
   width: number,
 ): FlashcardDecision | null {
+  'worklet';
   if (!isHorizontalSwipe(dx, dy)) return null;
-  const threshold = Math.min(
-    120,
-    Math.max(72, (Number.isFinite(width) && width > 0 ? width : 300) * 0.28),
-  );
+  const threshold = getFlashcardSwipeThreshold(width);
   const distance = Math.abs(dx);
   const flick =
     Number.isFinite(vx) &&

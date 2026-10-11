@@ -15,6 +15,7 @@ import type { FeedbackTiming, SessionConfig, StudyMode } from '@/domain/review/l
 import { useTranslation } from '@/shared/i18n';
 import { SessionHeader } from './SessionHeader';
 import { StudyIcon } from './StudyIcon';
+import { QuizSetup } from './QuizSetup';
 
 export function SessionSetup({
   deck,
@@ -31,7 +32,7 @@ export function SessionSetup({
 }) {
   const { t, formatNumber } = useTranslation();
   const [selectedMode, setMode] = useState(mode);
-  const [requestedLimit, setLimit] = useState(20);
+  const [requestedLimit, setLimit] = useState(mode === 'quiz' ? 10 : 20);
   const [shuffle, setShuffle] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackTiming>('immediate');
   const [advanced, setAdvanced] = useState(false);
@@ -42,6 +43,24 @@ export function SessionSetup({
   const counts = [
     ...new Set([5, 10, 20, total].filter((count) => count > 0 && count <= total)),
   ].sort((a, b) => a - b);
+  if (selectedMode === 'quiz')
+    return (
+      <QuizSetup
+        title={deck.title}
+        total={total}
+        limit={limit}
+        counts={counts}
+        shuffle={shuffle}
+        feedback={feedback}
+        onLimit={setLimit}
+        onShuffle={setShuffle}
+        onFeedback={setFeedback}
+        canSwitchMode={!targets && mode !== 'review' && !!deck.cards.length}
+        onCards={() => setMode('flashcard')}
+        onExit={onExit}
+        onStart={() => onStart({ mode: 'quiz', limit, shuffle, feedback })}
+      />
+    );
   return (
     <Screen includeTopInset>
       <SessionHeader title={t('session.startTitle')} onBack={onExit} />
@@ -52,8 +71,7 @@ export function SessionSetup({
         <View style={styles.grow}>
           <AppText variant="h4">{deck.title}</AppText>
           <AppText variant="bodySmall" tone="secondary">
-            {t(selectedMode === 'quiz' ? 'common.questions' : 'common.cards', { count: total })} ·{' '}
-            {deck.subject}
+            {t('common.cards', { count: total })} · {deck.subject}
           </AppText>
         </View>
       </View>
@@ -93,55 +111,9 @@ export function SessionSetup({
               }))}
             />
           </View>
-          {selectedMode === 'quiz' ? (
-            <View style={styles.surface}>
-              <View style={styles.heading}>
-                <StudyIcon name="statistics-achievements/stats" />
-                <AppText variant="h4" style={styles.grow}>
-                  {t('learning.feedback')}
-                </AppText>
-              </View>
-              <AppText variant="bodySmall" tone="secondary">
-                {t('session.feedbackBody')}
-              </AppText>
-              <View
-                accessibilityRole="radiogroup"
-                accessibilityLabel={t('learning.feedback')}
-                style={styles.options}
-              >
-                {(['immediate', 'after-submit'] as const).map((value) => (
-                  <Pressable
-                    key={value}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: value === feedback }}
-                    aria-checked={value === feedback}
-                    onPress={() => setFeedback(value)}
-                    style={[styles.feedback, value === feedback && styles.selected]}
-                  >
-                    <View style={[styles.radio, value === feedback && styles.radioSelected]}>
-                      {value === feedback ? <View style={styles.dot} /> : null}
-                    </View>
-                    <View style={styles.grow}>
-                      <AppText variant="label">
-                        {t(value === 'immediate' ? 'learning.immediate' : 'learning.afterSubmit')}
-                      </AppText>
-                      <AppText variant="bodySmall" tone="secondary">
-                        {t(
-                          value === 'immediate'
-                            ? 'learning.immediateBody'
-                            : 'learning.afterSubmitBody',
-                        )}
-                      </AppText>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : (
-            <AppText variant="bodySmall" tone="secondary">
-              {t('learning.tapHint')}
-            </AppText>
-          )}
+          <AppText variant="bodySmall" tone="secondary">
+            {t('learning.tapHint')}
+          </AppText>
           <View style={styles.surface}>
             <Pressable
               accessibilityRole="button"
@@ -177,7 +149,7 @@ export function SessionSetup({
             ) : null}
           </View>
           <Button
-            label={t(selectedMode === 'quiz' ? 'session.startQuiz' : 'session.startCards')}
+            label={t('session.startCards')}
             variant="tinted"
             trailingIcon="arrow"
             onPress={() => onStart({ mode: selectedMode, limit, shuffle, feedback })}
@@ -219,26 +191,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
   },
   heading: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', minHeight: 44 },
-  options: { gap: spacing.md },
-  feedback: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: radius.lg,
-  },
-  selected: { backgroundColor: colors.brand.soft, borderColor: colors.brand.primary },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    borderColor: colors.border.default,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: { borderColor: colors.brand.primary },
-  dot: { width: 12, height: 12, backgroundColor: colors.brand.primary, borderRadius: radius.pill },
 });

@@ -15,6 +15,8 @@ const labels: Partial<Record<AnswerState, TranslationKey>> = {
   correct: 'study.correctAnswer',
   incorrect: 'study.incorrect',
 };
+// Quiz feedback accents from the approved reference; text keeps semantic ink colors.
+const answerAccent = { correct: '#00BE73', incorrect: '#F04452' } as const;
 
 export type AnswerOptionProps = {
   label: string;
@@ -38,6 +40,7 @@ export function AnswerOption({
   const isChecked =
     checked ?? (state === 'selected' || state === 'incorrect' || state === 'correct');
   const feedback = state === 'correct' || state === 'incorrect';
+  const showFilled = state === 'selected' || (feedback && isChecked);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -61,6 +64,7 @@ export function AnswerOption({
       style={({ pressed }) => [
         styles.option,
         styles[state],
+        state === 'correct' && !isChecked && styles.reviewed,
         (focused || pressed) && styles.focused,
       ]}
     >
@@ -68,78 +72,99 @@ export function AnswerOption({
         style={[
           styles.marker,
           state === 'selected' && styles.selectedMarker,
-          state === 'correct' && styles.correctMarker,
+          state === 'correct' && isChecked && styles.correctMarker,
           state === 'incorrect' && styles.incorrectMarker,
         ]}
       >
         <AppText
           variant="label"
           style={{
-            color: state === 'selected' || feedback ? colors.text.inverse : colors.text.primary,
+            color: showFilled ? colors.text.inverse : colors.text.primary,
           }}
         >
           {marker}
         </AppText>
       </View>
       <View style={styles.body}>
-        <AppText>{label}</AppText>
-        {key ? (
-          <AppText
-            variant="bodySmall"
-            style={{
-              color:
-                state === 'incorrect'
-                  ? colors.feedback.error.text
-                  : state === 'correct'
-                    ? colors.feedback.success.text
-                    : colors.brand.deep,
-            }}
-          >
-            {t(key)}
-          </AppText>
-        ) : null}
+        <AppText variant={showFilled ? 'label' : 'body'}>{label}</AppText>
       </View>
       {feedback ? (
-        <Icon
-          name={state === 'correct' ? 'check' : 'close'}
-          color={state === 'correct' ? colors.feedback.success.text : colors.feedback.error.text}
-        />
-      ) : null}
+        <View
+          style={[
+            styles.result,
+            state === 'correct' ? styles.correctMarker : styles.incorrectMarker,
+          ]}
+        >
+          <Icon
+            name={state === 'correct' ? 'check' : 'close'}
+            size={16}
+            color={colors.text.inverse}
+          />
+        </View>
+      ) : (
+        <View style={[styles.radio, isChecked && styles.radioSelected]}>
+          {isChecked ? <View style={styles.dot} /> : null}
+        </View>
+      )}
     </Pressable>
   );
 }
 const styles = StyleSheet.create({
   option: {
     minHeight: 64,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     borderRadius: radius.lg,
     borderWidth: borderWidth.default,
   },
-  default: { backgroundColor: colors.surface.card, borderColor: colors.border.default },
+  default: { backgroundColor: colors.surface.card, borderColor: colors.border.subtle },
   selected: { backgroundColor: colors.brand.soft, borderColor: colors.explore.primary },
   correct: {
     backgroundColor: colors.feedback.success.background,
-    borderColor: colors.topic.green.accent,
+    borderColor: answerAccent.correct,
   },
   incorrect: {
     backgroundColor: colors.feedback.error.background,
-    borderColor: colors.topic.pink.accent,
+    borderColor: answerAccent.incorrect,
   },
   reviewed: { backgroundColor: colors.surface.card, borderColor: colors.border.subtle },
   focused: interaction.focusRing,
   marker: {
-    width: 32,
-    minHeight: 32,
-    borderRadius: radius.xs,
+    width: 38,
+    height: 38,
+    borderRadius: radius.pill,
     backgroundColor: colors.surface.subtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectedMarker: { backgroundColor: colors.explore.primary },
-  correctMarker: { backgroundColor: colors.feedback.success.text },
-  incorrectMarker: { backgroundColor: colors.feedback.error.text },
+  correctMarker: { backgroundColor: answerAccent.correct },
+  incorrectMarker: { backgroundColor: answerAccent.incorrect },
   body: { flex: 1, gap: spacing.xs },
+  result: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.text.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioSelected: { borderColor: colors.explore.primary },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.explore.primary,
+  },
 });

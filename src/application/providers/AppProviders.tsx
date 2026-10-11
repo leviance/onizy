@@ -8,11 +8,14 @@ import { useFonts } from 'expo-font';
 import { useLocales } from 'expo-localization';
 import type { PropsWithChildren } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { BrandArtwork, colors, spacing } from '@/design-system';
 import { localeStorage } from '@/infrastructure/storage/locale-storage';
 import { I18nProvider } from '@/shared/i18n';
+import { SpeechContext } from '@/shared/speech/context';
+import { speechService } from '@/infrastructure/speech/expo-speech';
 
 import { LearningProvider } from './LearningProvider';
 
@@ -38,15 +41,24 @@ export function AppProviders({ children }: PropsWithChildren) {
     </View>
   );
   return (
-    <SafeAreaProvider>
-      <I18nProvider storage={localeStorage} deviceLocales={deviceLocales} loading={loading}>
-        {fontsLoaded ? <LearningProvider>{children}</LearningProvider> : loading}
-      </I18nProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <I18nProvider storage={localeStorage} deviceLocales={deviceLocales} loading={loading}>
+          {fontsLoaded ? (
+            <SpeechContext.Provider value={speechService}>
+              <LearningProvider>{children}</LearningProvider>
+            </SpeechContext.Provider>
+          ) : (
+            loading
+          )}
+        </I18nProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   loading: {
     flex: 1,
     alignItems: 'center',

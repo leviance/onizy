@@ -6,6 +6,7 @@ import {
   quizResult,
   suggestReview,
   formatDuration,
+  canNavigateQuizQuestion,
 } from './learning-session.ts';
 import { learningStatistics } from './learning-statistics.ts';
 
@@ -38,32 +39,55 @@ const config = (mode = 'flashcard', feedback = 'immediate') => ({
 const reduce = (state, action, options = config()) =>
   transitionSession(state, action, deck, options);
 
-test('tap reveals before swipes; both decisions advance and final swipe completes', () => {
-  let state = startSession(deck, config());
-  assert.equal(reduce(state, { type: 'decide', itemId: 'c1', decision: 'again' }), state);
-  state = reduce(state, { type: 'flip' });
-  state = reduce(state, { type: 'decide', itemId: 'c1', decision: 'again' });
-  assert.equal(state.index, 1);
-  assert.equal(state.revealed, false);
-  assert.equal(state.submitted, false);
-  assert.equal(reduce(state, { type: 'decide', itemId: 'c1', decision: 'remembered' }), state);
-  state = reduce(state, { type: 'flip' });
-  state = reduce(state, { type: 'decide', itemId: 'c2', decision: 'remembered' });
-  assert.equal(state.submitted, true);
-  assert.deepEqual(state.decisions, { c1: 'again', c2: 'remembered' });
-  assert.equal(reduce(state, { type: 'flip' }), state);
+test('either card face accepts recall once, advances and completes flashcard/review sessions', () => {
+  for (const mode of ['flashcard', 'review']) {
+    for (const revealFirst of [false, true]) {
+      const options = config(mode);
+      let state = startSession(deck, options);
+      if (revealFirst) state = reduce(state, { type: 'flip' }, options);
+      assert.equal(
+        reduce(state, { type: 'decide', itemId: 'c2', decision: 'again' }, options),
+        state,
+      );
+      state = reduce(state, { type: 'decide', itemId: 'c1', decision: 'again' }, options);
+      assert.equal(state.index, 1);
+      assert.equal(state.revealed, false);
+      assert.equal(state.submitted, false);
+      assert.equal(
+        reduce(state, { type: 'decide', itemId: 'c1', decision: 'remembered' }, options),
+        state,
+      );
+      if (!revealFirst) state = reduce(state, { type: 'flip' }, options);
+      state = reduce(state, { type: 'decide', itemId: 'c2', decision: 'remembered' }, options);
+      assert.equal(state.submitted, true);
+      assert.deepEqual(state.decisions, { c1: 'again', c2: 'remembered' });
+      assert.equal(reduce(state, { type: 'flip' }, options), state);
+      assert.equal(
+        reduce(state, { type: 'decide', itemId: 'c2', decision: 'again' }, options),
+        state,
+      );
+    }
+  }
 });
 
 test('immediate quiz locks a choice, rejects skipping and premature submission', () => {
   const options = config('quiz');
   let state = startSession(deck, options);
+  assert.equal(
+    reduce(state, { type: 'decide', itemId: 'q1', decision: 'remembered' }, options),
+    state,
+  );
   assert.equal(reduce(state, { type: 'go', index: 1 }, options), state);
   assert.equal(reduce(state, { type: 'submit' }, options), state);
   state = reduce(state, { type: 'answer', itemId: 'q1', answerId: 'b' }, options);
   assert.equal(reduce(state, { type: 'answer', itemId: 'q1', answerId: 'a' }, options), state);
   assert.equal(reduce(state, { type: 'go', index: 2 }, options), state);
   state = reduce(state, { type: 'go', index: 1 }, options);
-  assert.equal(reduce(state, { type: 'go', index: 0 }, options), state);
+  state = reduce(state, { type: 'go', index: 0 }, options);
+  assert.equal(state.index, 0);
+  assert.deepEqual(state.answers, { q1: 'b' });
+  assert.equal(reduce(state, { type: 'answer', itemId: 'q1', answerId: 'a' }, options), state);
+  state = reduce(state, { type: 'go', index: 1 }, options);
   for (const id of ['q2', 'q3']) {
     state = reduce(state, { type: 'answer', itemId: id, answerId: 'a' }, options);
     if (id === 'q2') state = reduce(state, { type: 'go', index: 2 }, options);
@@ -77,6 +101,33 @@ test('immediate quiz locks a choice, rejects skipping and premature submission',
     incorrect: ['q1'],
     unanswered: 0,
   });
+});
+
+test('quiz navigation preserves answers and never submits at either boundary', () => {
+  for (const feedback of ['immediate', 'after-submit']) {
+    const options = config('quiz', feedback);
+    let state = startSession(deck, options);
+    for (const index of [-1, 0, 3, 1.5, NaN]) {
+      assert.equal(canNavigateQuizQuestion(state, index, feedback), false);
+      assert.equal(reduce(state, { type: 'go', index }, options), state);
+    }
+    for (let index = 0; index < 3; index++) {
+      state = reduce(state, { type: 'answer', itemId: `q${index + 1}`, answerId: 'b' }, options);
+      if (index < 2) state = reduce(state, { type: 'go', index: index + 1 }, options);
+    }
+    const answers = state.answers;
+    assert.equal(reduce(state, { type: 'go', index: 3 }, options), state);
+    state = reduce(state, { type: 'go', index: 1 }, options);
+    state = reduce(state, { type: 'go', index: 0 }, options);
+    state = reduce(state, { type: 'go', index: 1 }, options);
+    state = reduce(state, { type: 'go', index: 2 }, options);
+    assert.equal(state.answers, answers);
+    assert.equal(state.index, 2);
+    assert.equal(state.submitted, false);
+    state = reduce(state, { type: 'submit' }, options);
+    assert.equal(canNavigateQuizQuestion(state, 1, feedback), false);
+    assert.equal(reduce(state, { type: 'go', index: 1 }, options), state);
+  }
 });
 
 test('after-submit quiz supports changing answers and visiting unanswered questions', () => {

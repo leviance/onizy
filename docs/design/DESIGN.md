@@ -456,7 +456,9 @@ Avoid tall banners that routinely push `Review now` below the fold. On short scr
 - Centered flashcard: white, radius 28–32, flexible height; intentionally centered term/question.
 - Back: definition, pronunciation for vocabulary, examples, notes, media and source.
 - Small “Tap to flip” indicator / flip icon, using little space.
-- Phone flow: tap to flip; after viewing the answer, swipe left for `Needs review`, right for `Remembered`, then advance. These decisions have no separate onscreen buttons.
+- Taps flip the card vertically (top to bottom), rotating both faces around its centered horizontal axis using `motion.flip` (420 ms). The return flip reverses direction; a tap during the transition retargets it from the current angle. Both faces share the larger content height, and reduced motion switches faces immediately.
+- Phone flow: tap to flip when needed; swipe either face left for `Needs review` or right for `Remembered`, then advance. Viewing the answer is optional. These decisions have no separate onscreen buttons, and swipe hints and equivalent accessibility actions are available on both faces.
+- Session counters show `Learning` and `Know`. Horizontal drag progress blends the card border, decision label and matching counter toward the semantic error or success colors. Only an accepted release increments its counter; cancelled or short drags restore the neutral appearance. The count updates on release and the next card appears after the outgoing animation.
 - `ReviewRating` provides four levels for a separate advanced SRS mode when needed: `Again` · `Hard` · `Good` · `Easy`, with scheduler-provided intervals.
 
 **Interaction:** prioritize Android/iOS taps and swipes. Short swipes restore the card; vertical scrolling never records recall. Long content must not be confined to a fixed-height, unscrollable card. Desktop keyboard checks supplement the web preview only.
@@ -473,6 +475,14 @@ Avoid tall banners that routinely push `Review now` below the fold. On short scr
 - Checking through `Check` or automatically on selection **must be consistent within each mode**.
 - Feedback: icon/text, explanation, correct answer, link to the source flashcard when available.
 - Bottom CTA: `Continue` / `Finish`.
+
+The mobile Quiz setup uses a small floating checklist illustration, deck title, question count, an approximate duration of 30 seconds per question, and two feedback timing options. Count and shuffle controls expand from the question-count row. The current implementation supports single-choice questions; other question types require their own domain and input support.
+
+Active quizzes use a centered title and counter, an orange progress track, white answer cards with circular letter markers, and a fixed bookmark/continue action row above the device inset. The question body scrolls independently. Immediate feedback appears above the answers, with a compact illustration and a separate explanation below. Deferred feedback stays hidden until submission; the counter and answered summary open question navigation. Marked questions are available in the answer review after submission.
+
+Swipe the question left to advance or right to return to the previous question. Answers and feedback remain attached to their question. Immediate mode requires an answer before advancing and keeps previous answers locked; deferred mode permits skipping and editing. Short or vertical gestures do not navigate. The first and last boundaries resist and return without exiting or submitting. Question-counter accessibility actions provide equivalent navigation, and reduced motion skips the slide transition.
+
+Selected answers use the existing orange accent and pale orange background. Quiz feedback uses the approved reference accents `#00BE73` for correct markers/borders and `#F04452` for incorrect markers/borders inside `AnswerOption`; readable feedback text uses the existing semantic ink colors. An unselected correct answer keeps its neutral surface with a green check. These component-specific accents do not change the global palette or BottomNavigation.
 
 **Answer states:** `idle`, `hover`, `selected`, `correct`, `incorrect`, `disabled`, `reviewed`. Lock answers after submission unless the mode explicitly allows changes.
 
@@ -674,7 +684,7 @@ Templates describe **content hierarchy**, not fixed pixel measurements. Preserve
 - Button press: maximum scale `0.98`, no layout shift.
 - Desktop card hover: translateY `-2px`, slightly stronger shadow.
 - Page transitions: fade/translate 6–12px, not full-screen slides for every action.
-- Flashcard flip: `rotateY(180deg)` with a nonanimated reduced-motion version.
+- Flashcard flip: `rotateX(180deg)` with a nonanimated reduced-motion version.
 - Correct: check icon, pale success background, clear feedback; no continuous shaking.
 - Incorrect: clear explanation, no aggressive red shaking.
 - Streak/XP: 0.5–0.8s count-up only if comfortable and not obscuring real data.

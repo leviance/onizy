@@ -28,7 +28,12 @@ export function AnswerReview({
   const { t } = useTranslation();
   const [filter, setFilter] = useState('all');
   const result = quizResult(deck, record.itemIds, record.answers);
-  const ids = filter === 'missed' ? result.incorrect : record.itemIds;
+  const ids =
+    filter === 'missed'
+      ? result.incorrect
+      : filter === 'marked'
+        ? record.itemIds.filter((id) => record.markedQuestionIds?.includes(id))
+        : record.itemIds;
   return (
     <Screen includeTopInset>
       <SessionHeader title={t('learning.answers')} subtitle={deck.title} onBack={onBack} />
@@ -42,6 +47,9 @@ export function AnswerReview({
             value: 'missed',
             label: t('session.incorrectFilter', { value: result.incorrect.length }),
           },
+          ...(record.markedQuestionIds?.length
+            ? [{ value: 'marked', label: t('quiz.marked') }]
+            : []),
         ]}
       />
       {ids.map((id) => {

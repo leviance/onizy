@@ -32,8 +32,28 @@ export type SessionRecord = {
   itemIds: readonly string[];
   answers: Readonly<Record<string, string>>;
   decisions: Readonly<Record<string, RecallDecision>>;
+  markedQuestionIds?: readonly string[];
 };
 export type ReviewSchedule = { decision: RecallDecision; reviewedAt: number; dueAt: number };
+
+/** Navigation never grades, changes answers or submits a quiz. */
+export function canNavigateQuizQuestion(
+  state: SessionState,
+  index: number,
+  feedback: FeedbackTiming,
+): boolean {
+  if (
+    state.submitted ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= state.ids.length ||
+    index === state.index
+  )
+    return false;
+  if (feedback === 'after-submit' || index < state.index) return true;
+  const currentId = state.ids[state.index];
+  return index === state.index + 1 && !!currentId && !!state.answers[currentId];
+}
 
 export function startSession(
   deck: LearningDeck,
@@ -73,12 +93,7 @@ export function transitionSession(
     case 'flip':
       return config.mode === 'quiz' ? state : { ...state, revealed: !state.revealed };
     case 'decide': {
-      if (
-        config.mode === 'quiz' ||
-        !state.revealed ||
-        action.itemId !== currentId ||
-        state.decisions[action.itemId]
-      )
+      if (config.mode === 'quiz' || action.itemId !== currentId || state.decisions[action.itemId])
         return state;
       const decisions = { ...state.decisions, [action.itemId]: action.decision };
       const last = state.index + 1 === state.ids.length;
@@ -102,17 +117,7 @@ export function transitionSession(
       return { ...state, answers: { ...state.answers, [action.itemId]: action.answerId } };
     }
     case 'go': {
-      if (
-        config.mode !== 'quiz' ||
-        !Number.isInteger(action.index) ||
-        action.index < 0 ||
-        action.index >= state.ids.length
-      )
-        return state;
-      if (
-        config.feedback === 'immediate' &&
-        (!state.answers[currentId!] || action.index !== state.index + 1)
-      )
+      if (config.mode !== 'quiz' || !canNavigateQuizQuestion(state, action.index, config.feedback))
         return state;
       return { ...state, index: action.index };
     }

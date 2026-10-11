@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { useTranslation } from '@/shared/i18n';
@@ -24,6 +24,9 @@ export type QuizQuestionProps = ComponentStateProps & {
   onSubmit: () => void;
   showSubmitButton?: boolean;
   showExplanation?: boolean;
+  layout?: 'default' | 'session';
+  headerAction?: ReactNode;
+  feedbackVisual?: ReactNode;
 };
 export function QuizQuestion({
   question,
@@ -36,6 +39,9 @@ export function QuizQuestion({
   onSubmit,
   showSubmitButton = true,
   showExplanation = true,
+  layout = 'default',
+  headerAction,
+  feedbackVisual,
   status = 'default',
   onRetry,
 }: QuizQuestionProps) {
@@ -46,71 +52,111 @@ export function QuizQuestion({
   if (contentStatus === 'empty') return <StateView status="empty" onAction={onRetry} />;
   if (contentStatus === 'invalid' || !question.trim())
     return <StateView status="error" message={t('study.invalidQuestion')} onAction={onRetry} />;
+  const isCorrect = selectedId === correctId;
+  const correctChoice = choices.find((choice) => choice.id === correctId);
+  const feedbackColor = isCorrect ? colors.feedback.success.text : colors.feedback.error.text;
   return (
     <View style={styles.container}>
-      <View style={styles.question}>
-        <AppText variant="caption" style={styles.eyebrow}>
-          {t('study.choose')}
-        </AppText>
-        <AppText variant="studyQuestion" accessibilityRole="header">
-          {question}
-        </AppText>
-      </View>
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('study.choose')}
-        {...(Platform.OS === 'web'
-          ? {
-              onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-                if (
-                  submitted ||
-                  event.altKey ||
-                  event.ctrlKey ||
-                  event.metaKey ||
-                  !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
-                    event.key,
+      {layout === 'session' && submitted ? (
+        <View
+          style={[
+            styles.feedback,
+            {
+              backgroundColor: isCorrect
+                ? colors.feedback.success.background
+                : colors.feedback.error.background,
+            },
+          ]}
+          accessibilityLiveRegion="polite"
+          aria-live="polite"
+        >
+          {feedbackVisual}
+          <AppText variant="h3" style={{ color: feedbackColor }}>
+            {t(isCorrect ? 'quiz.correctTitle' : 'quiz.incorrectTitle')}
+          </AppText>
+          <AppText>{t('quiz.answerIs', { answer: correctChoice?.text ?? '' })}</AppText>
+        </View>
+      ) : null}
+      <View style={layout === 'session' ? styles.sessionCard : styles.defaultCard}>
+        {layout !== 'session' || !submitted ? (
+          <View style={layout === 'session' ? styles.sessionQuestion : styles.question}>
+            <View style={styles.questionHeading}>
+              <AppText variant="caption" style={styles.eyebrow}>
+                {t('study.choose')}
+              </AppText>
+            </View>
+            <View style={styles.questionHeading}>
+              <AppText
+                variant="studyQuestion"
+                accessibilityRole="header"
+                style={styles.questionText}
+              >
+                {question}
+              </AppText>
+              {headerAction}
+            </View>
+          </View>
+        ) : (
+          <AppText variant="bodySmall" accessibilityRole="header" tone="secondary">
+            {question}
+          </AppText>
+        )}
+        <View
+          style={styles.choices}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('study.choose')}
+          {...(Platform.OS === 'web'
+            ? {
+                onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+                  if (
+                    submitted ||
+                    event.altKey ||
+                    event.ctrlKey ||
+                    event.metaKey ||
+                    !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(
+                      event.key,
+                    )
                   )
-                )
-                  return;
-                event.preventDefault();
-                const options = [
-                  ...event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]'),
-                ];
-                const current = options.findIndex(
-                  (option) => option === event.target || option.contains(event.target as Node),
-                );
-                const nextIndex =
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? options.length - 1
-                      : (current +
-                          (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1) +
-                          options.length) %
-                        options.length;
-                const choice = choices[nextIndex];
-                if (choice) {
-                  options[nextIndex]?.focus();
-                  onSelect(choice.id);
-                }
-              },
-            }
-          : {})}
-      >
-        {choices.map((choice, index) => (
-          <AnswerOption
-            key={choice.id}
-            label={choice.text}
-            marker={String.fromCharCode(65 + index)}
-            state={getAnswerState(choice.id, selectedId, correctId, submitted)}
-            checked={selectedId === choice.id}
-            disabled={submitted}
-            onPress={() => {
-              if (!submitted) onSelect(choice.id);
-            }}
-          />
-        ))}
+                    return;
+                  event.preventDefault();
+                  const options = [
+                    ...event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]'),
+                  ];
+                  const current = options.findIndex(
+                    (option) => option === event.target || option.contains(event.target as Node),
+                  );
+                  const nextIndex =
+                    event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? options.length - 1
+                        : (current +
+                            (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1) +
+                            options.length) %
+                          options.length;
+                  const choice = choices[nextIndex];
+                  if (choice) {
+                    options[nextIndex]?.focus();
+                    onSelect(choice.id);
+                  }
+                },
+              }
+            : {})}
+        >
+          {choices.map((choice, index) => (
+            <AnswerOption
+              key={choice.id}
+              label={choice.text}
+              marker={String.fromCharCode(65 + index)}
+              state={getAnswerState(choice.id, selectedId, correctId, submitted)}
+              checked={selectedId === choice.id}
+              disabled={submitted}
+              onPress={() => {
+                if (!submitted) onSelect(choice.id);
+              }}
+            />
+          ))}
+        </View>
       </View>
       {submitted && showExplanation ? (
         <View
@@ -118,11 +164,12 @@ export function QuizQuestion({
             styles.explanation,
             {
               backgroundColor:
-                selectedId === correctId
-                  ? colors.feedback.success.background
-                  : colors.feedback.error.background,
-              borderColor:
-                selectedId === correctId ? colors.topic.green.accent : colors.topic.pink.accent,
+                layout === 'session'
+                  ? colors.feedback.info.background
+                  : selectedId === correctId
+                    ? colors.feedback.success.background
+                    : colors.feedback.error.background,
+              borderColor: layout === 'session' ? 'transparent' : feedbackColor,
             },
           ]}
           accessibilityLiveRegion="polite"
@@ -130,10 +177,8 @@ export function QuizQuestion({
         >
           <View style={styles.feedbackTitle}>
             <Icon
-              name={selectedId === correctId ? 'check' : 'alert'}
-              color={
-                selectedId === correctId ? colors.feedback.success.text : colors.feedback.error.text
-              }
+              name={layout === 'session' ? 'book' : isCorrect ? 'check' : 'alert'}
+              color={layout === 'session' ? colors.explore.primary : feedbackColor}
             />
             <AppText
               variant="label"
@@ -145,13 +190,21 @@ export function QuizQuestion({
                     : colors.feedback.error.text,
               }}
             >
-              {t(selectedId === correctId ? 'study.correct' : 'study.incorrect')}
+              {t(
+                layout === 'session'
+                  ? 'study.explanation'
+                  : isCorrect
+                    ? 'study.correct'
+                    : 'study.incorrect',
+              )}
             </AppText>
           </View>
-          <AppText variant="bodySmall" tone="secondary">
-            {t('study.explanation')}
-          </AppText>
-          <AppText>{explanation}</AppText>
+          {layout !== 'session' ? (
+            <AppText variant="bodySmall" tone="secondary">
+              {t('study.explanation')}
+            </AppText>
+          ) : null}
+          <AppText variant="bodySmall">{explanation}</AppText>
         </View>
       ) : !submitted && showSubmitButton ? (
         <Button
@@ -166,6 +219,17 @@ export function QuizQuestion({
 }
 const styles = StyleSheet.create({
   container: { gap: spacing.xl },
+  defaultCard: { gap: spacing.xl },
+  sessionCard: {
+    backgroundColor: colors.surface.card,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  sessionQuestion: { gap: spacing.lg, padding: spacing.xs },
+  questionHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  questionText: { flex: 1, minWidth: 0 },
+  feedback: { padding: spacing.xl, borderRadius: radius.lg, gap: spacing.sm },
   question: {
     backgroundColor: colors.surface.card,
     borderRadius: radius.card,
