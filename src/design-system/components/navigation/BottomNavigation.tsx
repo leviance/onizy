@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/shared/i18n';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 
+import { generatedIconAssets, generatedIconSize } from '../../assets/icon-library';
+import type { GeneratedIconName } from '../../assets/icon-library';
 import {
   colors,
   elevation,
@@ -24,9 +26,6 @@ import {
   spacing,
 } from '../../tokens';
 import { AppText } from '../AppText';
-import { Icon } from '../Icon';
-import type { IconName } from '../Icon';
-import { IllustratedIcon } from '../IllustratedIcon';
 
 export type NavigationKey = 'home' | 'library' | 'create' | 'review' | 'profile';
 export type BottomNavigationProps = {
@@ -40,12 +39,12 @@ export type BottomNavigationProps = {
   busyKey?: NavigationKey | undefined;
   appearance?: 'default' | 'expressive';
 };
-const items: readonly { key: NavigationKey; icon: IconName }[] = [
-  { key: 'home', icon: 'home' },
-  { key: 'library', icon: 'decks' },
-  { key: 'create', icon: 'plus' },
-  { key: 'review', icon: 'review' },
-  { key: 'profile', icon: 'user' },
+const items: readonly { key: NavigationKey; icon: GeneratedIconName }[] = [
+  { key: 'home', icon: 'navigation-system/home' },
+  { key: 'library', icon: 'library-editor/copy' },
+  { key: 'create', icon: 'library-editor/add' },
+  { key: 'review', icon: 'navigation-system/refresh' },
+  { key: 'profile', icon: 'account-settings/profile' },
 ];
 const createButtonSize = spacing['6xl'];
 const labelLineHeight = 16;
@@ -143,21 +142,21 @@ export function BottomNavigation({
               >
                 {busy ? (
                   <ActivityIndicator color={colors.brand.deep} />
-                ) : selected && item.key === 'home' && appearance === 'expressive' ? (
-                  <IllustratedIcon name="home" size={25} />
                 ) : (
-                  <Icon
-                    name={item.icon}
-                    size={item.key === 'create' ? 32 : 23}
-                    color={
-                      item.key === 'create'
-                        ? appearance === 'expressive'
-                          ? colors.text.inverse
-                          : colors.text.primary
-                        : selected
-                          ? colors.brand.deep
-                          : colors.text.secondary
-                    }
+                  <Image
+                    source={generatedIconAssets[item.icon]}
+                    resizeMode="contain"
+                    fadeDuration={0}
+                    accessible={false}
+                    aria-hidden
+                    style={[
+                      styles.iconImage,
+                      item.key === 'create' && styles.createIconImage,
+                      item.key === 'create' && {
+                        tintColor:
+                          appearance === 'expressive' ? colors.text.inverse : colors.text.primary,
+                      },
+                    ]}
                   />
                 )}
               </View>
@@ -216,6 +215,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   active: { backgroundColor: colors.brand.soft },
+  iconImage: { width: generatedIconSize, height: generatedIconSize },
+  createIconImage: { width: 32, height: 32 },
   create: {
     width: createButtonSize,
     height: createButtonSize,
