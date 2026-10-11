@@ -52,6 +52,8 @@ Main screens share `useScrollNavigation`: downward scrolling hides the floating 
 
 Logos/mascots live in `assets/brand`, native icons in `assets/app-icons`, and feature illustrations in `assets/illustrations/<feature>`. Declare images in their owning module; `app.config.ts` references build assets directly.
 
+The generated Onizy icon library lives in `assets/icons/<category>`. Its 154 base icons use transparent 24 x 24 PNGs with 48 x 48 and 72 x 72 density variants. `design-system/assets/icon-library.ts` owns the static asset declarations and exposes typed names, source-label aliases and the logical size through the design-system public API. Repeated source-sheet symbols share an alias. Consumers use `generatedIconAssets` with explicit 24 dp image dimensions and preserve each icon's accent colors; the existing SVG `Icon` component remains available for functional icons.
+
 Runtime PNGs use a base image sized for the intended dp dimensions, with matching `@2x`/`@3x` variants selected by React Native. Functional icons reuse inline SVG; design-specific generated icons follow the same PNG checks when explicitly requested by the owner. `check:assets` validates density dimensions and byte budgets; `check:structure` assigns variants to the base image's owner. Follow the [asset performance rules](../../CODEX.md) when adding artwork.
 
 Co-located `*.test.mjs` files are discovered by `npm test`. Node runs plain TypeScript through type stripping; runtime imports between tested modules use relative paths ending in `.ts`. `npm run check` runs all checks. Android/iOS still require device verification of taps/swipes, keyboards, fontScale, safe areas, screen readers and locale changes across app restarts; bundle exports do not replace native tests.

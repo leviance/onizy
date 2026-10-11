@@ -14,6 +14,12 @@ export { Icon } from './components/Icon';
 export type { IconName, IconProps } from './components/Icon';
 export { IllustratedIcon } from './components/IllustratedIcon';
 export type { IllustratedIconName, IllustratedIconProps } from './components/IllustratedIcon';
+export {
+  generatedIconAssets,
+  generatedIconAliases,
+  generatedIconSize,
+} from './assets/icon-library';
+export type { GeneratedIconName } from './assets/icon-library';
 export { Sparkle } from './components/Sparkle';
 export type { SparkleProps } from './components/Sparkle';
 export { IconButton } from './components/IconButton';
