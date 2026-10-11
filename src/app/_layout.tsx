@@ -29,6 +29,8 @@ export default function RootLayout() {
         <Stack.Screen name="study" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="review" options={{ headerShown: false }} />
         <Stack.Screen name="progress" options={{ headerShown: false }} />
+        <Stack.Screen name="history" options={{ headerShown: false }} />
+        <Stack.Screen name="practice" options={{ headerShown: false }} />
       </Stack>
     </AppProviders>
   );

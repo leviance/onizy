@@ -9,9 +9,19 @@ export default function ReviewRoute() {
     <ReviewScreen
       decks={learning.decks}
       schedules={learning.schedules}
+      records={learning.records}
       onNavigate={navigateMain}
+      onStartQueue={(ids) =>
+        router.push({
+          pathname: '/study',
+          params: { batch: ids.join(','), mode: 'review', origin: 'review' },
+        })
+      }
       onStudy={(deck, ids) =>
-        router.push({ pathname: '/study', params: { deck, mode: 'review', items: ids.join(',') } })
+        router.push({
+          pathname: '/study',
+          params: { deck, mode: 'review', items: ids.join(','), origin: 'review' },
+        })
       }
     />
   );

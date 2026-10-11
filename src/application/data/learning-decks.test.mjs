@@ -47,3 +47,23 @@ test('language switching never translates or rewrites user-authored content', ()
   assert.equal(localizeDemoDeck(userDeck, 'en'), userDeck);
   assert.equal(userDeck.title, 'Nội dung của tôi');
 });
+
+test('development TOEIC deck has 30 distinct complete cards in both languages', () => {
+  const deck = createInitialLearningData(true).state.decks.find((item) => item.id === 'toeic');
+  assert.ok(deck);
+  assert.equal(deck.cards.length, 30);
+  assert.equal(new Set(deck.cards.map((card) => card.id)).size, 30);
+  assert.equal(new Set(deck.cards.map((card) => card.front)).size, 30);
+  assert.equal(deck.cards[0].id, 'toeic-card-1');
+  assert.equal(deck.cards[1].id, 'toeic-card-2');
+  const english = localizeDemoDeck(deck, 'en');
+  for (const [index, card] of deck.cards.entries()) {
+    const translated = english.cards[index];
+    assert.ok(card.front.trim() && card.back.trim());
+    assert.equal(translated.id, card.id);
+    assert.equal(translated.front, card.front);
+    assert.notEqual(translated.back, card.back);
+    assert.ok(translated.back.trim());
+  }
+  assert.equal(createInitialLearningData(false).state.decks.length, 0);
+});

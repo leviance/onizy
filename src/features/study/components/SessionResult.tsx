@@ -1,20 +1,20 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import {
   AppText,
   Button,
-  QuizQuestion,
   Screen,
-  SectionHeading,
-  Sparkle,
   colors,
   radius,
   spacing,
+  useResponsiveLayout,
 } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
-import { formatDuration, quizResult } from '@/domain/review/learning-session';
+import { formatDuration, quizResult, suggestReview } from '@/domain/review/learning-session';
 import type { SessionRecord } from '@/domain/review/learning-session';
 import { useTranslation } from '@/shared/i18n';
+import { AnswerReview } from './AnswerReview';
 import { SessionHeader } from './SessionHeader';
+import { StudyIcon } from './StudyIcon';
 
 export function SessionResult({
   deck,
@@ -25,6 +25,8 @@ export function SessionResult({
   onRetry,
   onProgress,
   onExit,
+  onNextDeck,
+  exitLabel,
 }: {
   deck: LearningDeck;
   record: SessionRecord;
@@ -34,8 +36,12 @@ export function SessionResult({
   onRetry: (ids: readonly string[]) => void;
   onProgress: () => void;
   onExit: () => void;
+  onNextDeck?: (() => void) | undefined;
+  exitLabel: string;
 }) {
-  const { formatText, t, formatNumber, formatPercent } = useTranslation();
+  const { t, formatNumber, formatPercent, formatDateTime } = useTranslation();
+  const { wide } = useResponsiveLayout();
+  const stackMetrics = !wide;
   const quiz = record.mode === 'quiz';
   const result = quizResult(deck, record.itemIds, record.answers);
   const good = quiz
@@ -44,172 +50,214 @@ export function SessionResult({
   const missed = quiz
     ? result.incorrect
     : record.itemIds.filter((id) => record.decisions[id] === 'again');
-  if (answersOpen)
-    return (
-      <Screen key="answers" includeTopInset>
-        <SessionHeader
-          title={t('learning.answers')}
-          subtitle={deck.title}
-          onBack={onToggleAnswers}
-        />
-        {record.itemIds.map((id, index) => {
-          const question = deck.questions.find((item) => item.id === id);
-          return question ? (
-            <View key={id} style={{ gap: spacing.md }}>
-              <AppText variant="label">
-                {formatText('learning.questionIndex', {
-                  value: index + 1,
-                  total: record.itemIds.length,
-                })}
-              </AppText>
-              {!record.answers[id] ? (
-                <AppText tone="secondary">{t('learning.unanswered')}</AppText>
-              ) : null}
-              <QuizQuestion
-                {...question}
-                selectedId={record.answers[id] ?? null}
-                submitted
-                explanation={question.explanation}
-                showSubmitButton={false}
-                onSelect={() => {}}
-                onSubmit={() => {}}
-              />
-            </View>
-          ) : null;
-        })}
-        <Button label={t('common.back')} variant="tinted" onPress={onToggleAnswers} />
-      </Screen>
-    );
+  const nextReview = quiz
+    ? null
+    : Math.min(
+        ...Object.values(record.decisions).map(
+          (decision) => suggestReview(decision, record.finishedAt).dueAt,
+        ),
+      );
+  if (answersOpen) return <AnswerReview deck={deck} record={record} onBack={onToggleAnswers} />;
   return (
     <Screen key="result" includeTopInset>
-      <SessionHeader
-        title={t(quiz ? 'learning.quizResult' : 'learning.result')}
-        subtitle={deck.title}
-        onBack={onExit}
-      />
-      <View style={styles.hero}>
-        <View style={styles.heroTitle}>
-          <Sparkle size={20} color={colors.explore.sunny} />
-          <AppText variant="h4" style={styles.inverse}>
-            {t('learning.wellDone')}
-          </AppText>
-          <Sparkle size={20} color={colors.explore.sunny} />
+      <SessionHeader title={t('session.resultsTitle')} subtitle={deck.title} onBack={onExit} />
+      <View style={styles.intro}>
+        <View style={styles.complete}>
+          <StudyIcon name="navigation-system/success" />
         </View>
-        <AppText variant="display" style={styles.inverse}>
-          {formatNumber(good)}/{formatNumber(record.itemIds.length)}
+        <AppText variant="h2" accessibilityRole="header">
+          {t(quiz ? 'session.answerSummary' : 'learning.result')}
         </AppText>
-        <AppText style={styles.inverse}>
-          {t(quiz ? 'learning.accuracy' : 'learning.remembered')}
-          {quiz ? ` · ${formatPercent((good / Math.max(1, record.itemIds.length)) * 100)}` : ''}
-        </AppText>
+        <AppText tone="secondary">{t('session.resultBody')}</AppText>
       </View>
-      <View style={styles.metrics}>
-        {[
-          {
-            label: t(quiz ? 'learning.correct' : 'learning.remembered'),
-            value: good,
-            background: colors.topic.green.background,
-          },
-          {
-            label: t('learning.improve'),
-            value: missed.length,
-            background: colors.feedback.error.background,
-          },
-          {
-            label: t('learning.time'),
-            value: formatDuration(record.durationSeconds),
-            background: colors.topic.orange.background,
-          },
-        ].map((metric) => (
-          <View key={metric.label} style={[styles.metric, { backgroundColor: metric.background }]}>
-            <AppText variant="h3">
-              {typeof metric.value === 'number' ? formatNumber(metric.value) : metric.value}
-            </AppText>
-            <AppText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
-              {metric.label}
+      <View style={styles.summary}>
+        <AppText variant="display">
+          {quiz
+            ? formatNumber(good) + ' / ' + formatNumber(record.itemIds.length)
+            : formatNumber(record.itemIds.length)}
+        </AppText>
+        <AppText tone="secondary">{t(quiz ? 'learning.correct' : 'session.totalCards')}</AppText>
+        {quiz ? (
+          <View style={styles.accuracy}>
+            <StudyIcon name="navigation-system/success" />
+            <AppText variant="label" style={styles.green}>
+              {formatPercent((good / Math.max(1, record.itemIds.length)) * 100)} ·{' '}
+              {t('learning.accuracy')}
             </AppText>
           </View>
-        ))}
-      </View>
-      <SectionHeading title={t('learning.again')} decorate={false} />
-      {missed.length ? (
-        missed.map((id) => {
-          const question = deck.questions.find((item) => item.id === id);
-          const card = deck.cards.find((item) => item.id === id);
-          return (
-            <View key={id} style={styles.missed}>
-              <AppText variant="label">{quiz ? question?.question : card?.front}</AppText>
-              <AppText variant="bodySmall" tone="secondary">
-                {quiz
-                  ? formatText('learning.yourAnswer', {
-                      answer:
-                        question?.choices.find((choice) => choice.id === record.answers[id])
-                          ?.text ?? t('learning.unanswered'),
-                    })
-                  : card?.back}
+        ) : null}
+        <View style={[styles.metrics, stackMetrics && styles.metricsStack]}>
+          {[
+            {
+              name: quiz ? ('quiz/quiz' as const) : ('flashcards-vocabulary/remembered' as const),
+              label: t(quiz ? 'session.totalQuestions' : 'deck.recalled'),
+              value: formatNumber(quiz ? record.itemIds.length : good),
+            },
+            {
+              name: 'srs/review' as const,
+              label: t('learning.time'),
+              value: formatDuration(record.durationSeconds),
+            },
+            {
+              name: 'statistics-achievements/target' as const,
+              label: t('learning.improve'),
+              value: formatNumber(missed.length),
+            },
+          ].map((metric) => (
+            <View key={metric.label} style={[styles.metric, stackMetrics && styles.metricRow]}>
+              <StudyIcon name={metric.name} />
+              <AppText variant="h3" style={stackMetrics && styles.metricValue}>
+                {metric.value}
+              </AppText>
+              <AppText variant="caption" tone="secondary" style={stackMetrics && styles.grow}>
+                {metric.label}
               </AppText>
             </View>
-          );
-        })
-      ) : (
-        <AppText tone="secondary">{t('learning.perfect')}</AppText>
-      )}
-      {missed.length ? (
-        <Button
-          label={t('learning.retryMissed')}
-          variant="tinted"
-          trailingIcon="arrow"
-          onPress={() => onRetry(missed)}
-        />
+          ))}
+        </View>
+      </View>
+      {nextReview !== null && Number.isFinite(nextReview) ? (
+        <View style={styles.nextReview}>
+          <StudyIcon name="srs/calendar" />
+          <View style={styles.grow}>
+            <AppText variant="caption" tone="secondary">
+              {t('session.nextReview')}
+            </AppText>
+            <AppText variant="label">{formatDateTime(nextReview)}</AppText>
+          </View>
+        </View>
       ) : null}
-      {quiz ? (
-        <Button label={t('learning.seeAnswers')} variant="soft" onPress={onToggleAnswers} />
+      {missed.length ? (
+        <View style={styles.group}>
+          <AppText variant="h4" accessibilityRole="header">
+            {t('learning.again')}
+          </AppText>
+          {missed.map((id) => {
+            const question = deck.questions.find((item) => item.id === id);
+            const card = deck.cards.find((item) => item.id === id);
+            return (
+              <Pressable
+                key={id}
+                accessibilityRole="button"
+                onPress={() => (quiz ? onToggleAnswers() : onRetry([id]))}
+                style={({ pressed }) => [styles.missed, pressed && styles.pressed]}
+              >
+                <View style={styles.grow}>
+                  <AppText variant="label">{quiz ? question?.question : card?.front}</AppText>
+                  <AppText variant="bodySmall" tone="secondary">
+                    {quiz
+                      ? t('learning.yourAnswer', {
+                          answer:
+                            question?.choices.find((choice) => choice.id === record.answers[id])
+                              ?.text ?? t('learning.unanswered'),
+                        })
+                      : card?.back}
+                  </AppText>
+                </View>
+                <StudyIcon name="navigation-system/forward" />
+              </Pressable>
+            );
+          })}
+        </View>
       ) : (
         <AppText variant="bodySmall" tone="secondary">
-          {t('learning.reviewSuggestion')}
+          {t('learning.perfect')}
         </AppText>
       )}
-      <Button label={t('learning.replay')} variant="secondary" onPress={onReplay} />
-      <Button
-        label={t('learning.seeProgress')}
-        variant="soft"
-        leadingIcon="chart"
-        onPress={onProgress}
-      />
-      <Button label={t('learning.backLibrary')} variant="ghost" onPress={onExit} />
+      <View style={styles.group}>
+        {onNextDeck ? (
+          <Button
+            label={t('session.nextDeck')}
+            variant="tinted"
+            trailingIcon="arrow"
+            onPress={onNextDeck}
+          />
+        ) : null}
+        {quiz ? (
+          <Button
+            label={t('learning.seeAnswers')}
+            variant={onNextDeck ? 'soft' : 'tinted'}
+            trailingIcon="arrow"
+            onPress={onToggleAnswers}
+          />
+        ) : null}
+        {missed.length ? (
+          <Button
+            label={t('learning.retryMissed')}
+            variant={!quiz && !onNextDeck ? 'tinted' : 'soft'}
+            onPress={() => onRetry(missed)}
+          />
+        ) : null}
+        <Button
+          label={exitLabel}
+          variant={!quiz && !missed.length && !onNextDeck ? 'tinted' : 'soft'}
+          onPress={onExit}
+        />
+        <View style={styles.links}>
+          <Button label={t('learning.replay')} variant="link" onPress={onReplay} />
+          <Button label={t('learning.seeProgress')} variant="link" onPress={onProgress} />
+        </View>
+      </View>
     </Screen>
   );
 }
 const styles = StyleSheet.create({
-  hero: {
-    backgroundColor: colors.explore.primary,
-    padding: spacing['3xl'],
-    borderRadius: radius.card,
+  intro: { gap: spacing.md },
+  complete: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
     alignItems: 'center',
-    gap: spacing.lg,
-  },
-  heroTitle: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-    flexWrap: 'wrap',
     justifyContent: 'center',
+    backgroundColor: colors.feedback.success.background,
   },
-  inverse: { color: colors.text.inverse, textAlign: 'center' },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  summary: {
+    padding: spacing.xl,
+    backgroundColor: colors.surface.card,
+    borderRadius: radius.card,
+    gap: spacing.md,
+  },
+  accuracy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexWrap: 'wrap',
+    backgroundColor: colors.feedback.success.background,
+    padding: spacing.sm,
+    borderRadius: radius.pill,
+    gap: spacing.sm,
+  },
+  green: { color: colors.feedback.success.text, flexShrink: 1 },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
   metric: {
     flex: 1,
-    minWidth: 88,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.lg,
+    minWidth: 80,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface.warm,
+    gap: spacing.sm,
+  },
+  metricsStack: { flexDirection: 'column', flexWrap: 'nowrap' },
+  metricRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  metricValue: { minWidth: 64 },
+  nextReview: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-  },
-  missed: {
-    padding: spacing.lg,
+    padding: spacing.xl,
+    gap: spacing.lg,
+    backgroundColor: colors.brand.soft,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface.card,
-    gap: spacing.sm,
   },
+  grow: { flex: 1, minWidth: 0, gap: spacing.sm },
+  group: { gap: spacing.md },
+  missed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+    backgroundColor: colors.surface.card,
+    borderRadius: radius.lg,
+  },
+  pressed: { opacity: 0.8 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
 });

@@ -14,6 +14,8 @@ export function StudyScreen({
   onExit,
   onProgress,
   onComplete,
+  onNextDeck,
+  returnDestination = 'deck',
 }: {
   deck: LearningDeck | undefined;
   mode?: StudyMode;
@@ -21,6 +23,8 @@ export function StudyScreen({
   onExit: () => void;
   onProgress: () => void;
   onComplete: (record: SessionRecord) => void;
+  onNextDeck?: (() => void) | undefined;
+  returnDestination?: 'deck' | 'review' | 'practice' | 'history';
 }) {
   const { t } = useTranslation();
   const [config, setConfig] = useState<SessionConfig | null>(null);
@@ -54,6 +58,7 @@ export function StudyScreen({
           setRecord(null);
           setConfig(null);
           setTargets(undefined);
+          setAnswersOpen(false);
           setRun((value) => value + 1);
         }}
         onRetry={(ids) => {
@@ -65,6 +70,16 @@ export function StudyScreen({
         }}
         onProgress={onProgress}
         onExit={onExit}
+        onNextDeck={onNextDeck}
+        exitLabel={t(
+          returnDestination === 'history'
+            ? 'progress.backHistory'
+            : returnDestination === 'practice'
+              ? 'progress.backPractice'
+              : returnDestination === 'review'
+                ? 'session.backReview'
+                : 'session.backDeck',
+        )}
       />
     );
   return (

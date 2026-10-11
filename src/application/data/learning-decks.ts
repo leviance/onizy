@@ -4,6 +4,7 @@ import type { LearningState } from '@/domain/review/learning-state';
 import { locales } from '../../shared/i18n/resources.ts';
 import type { Locale, TranslationKey } from '../../shared/i18n/resources.ts';
 import { englishDemoContent } from './learning-decks.en.ts';
+import { toeicVocabularyCards } from './toeic-vocabulary.ts';
 
 type StudySample = {
   title: string;
@@ -125,13 +126,7 @@ const astronomy: StudySample = {
 const toeic: StudySample = {
   ...english,
   title: 'Từ vựng TOEIC',
-  cards: [
-    {
-      front: 'appointment',
-      back: 'Cuộc hẹn.\n“I have an appointment at 10.” — Tôi có một cuộc hẹn lúc 10 giờ.',
-    },
-    { front: 'deadline', back: 'Hạn chót.\n“The deadline is Friday.” — Hạn chót là thứ Sáu.' },
-  ],
+  cards: toeicVocabularyCards.vi,
   questions: [
     {
       question: '“Deadline” có nghĩa là gì?',

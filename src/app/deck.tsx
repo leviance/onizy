@@ -7,9 +7,24 @@ export default function DeckRoute() {
   const learning = useLearning();
   return (
     <DeckScreen
+      key={deck}
       deck={learning.decks.find((item) => item.id === deck)}
+      schedules={learning.schedules}
+      records={learning.records}
+      preference={deck ? learning.libraryPreferences[deck] : undefined}
+      onToggleFavorite={() => {
+        if (deck) learning.toggleFavorite(deck);
+      }}
+      onMoveToFolder={(folder) => {
+        if (deck) learning.moveToFolder(deck, folder);
+      }}
       onBack={() => router.dismissTo('/library')}
-      onStart={(mode) => router.push({ pathname: '/study', params: { deck, mode } })}
+      onStart={(mode, ids) =>
+        router.push({
+          pathname: '/study',
+          params: { deck, mode, ...(ids ? { items: ids.join(',') } : {}) },
+        })
+      }
     />
   );
 }

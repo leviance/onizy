@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import {
   AppText,
   BottomNavigation,
   Button,
-  IconButton,
   ProgressBar,
   Screen,
-  SectionHeading,
   SegmentedControl,
   StateView,
   colors,
@@ -18,50 +16,65 @@ import {
 } from '@/design-system';
 import type { NavigationKey } from '@/design-system';
 import type { LearningDeck } from '@/domain/content/learning';
-import { formatDuration } from '@/domain/review/learning-session';
 import type { ReviewSchedule, SessionRecord } from '@/domain/review/learning-session';
 import { learningStatistics } from '@/domain/review/learning-statistics';
+import { currentStudyStreak } from '@/domain/review/review-queue';
 import { deckReviewSummary } from '@/domain/review/review-summary';
+import { studyActivity } from '@/domain/review/study-activity';
 import { useCurrentTime } from '@/shared/hooks/useCurrentTime';
 import { useTranslation } from '@/shared/i18n';
+import { ActivityChart } from '../components/ActivityChart';
+import { ProgressHeader } from '../components/ProgressHeader';
+import { ProgressIcon } from '../components/ProgressIcon';
 
 export function ProgressScreen({
   decks,
   records,
   schedules,
+  onBack,
+  onHistory,
+  onPractice,
+  onDeck,
+  onStudy,
   onNavigate,
   languageControl,
 }: {
   decks: readonly LearningDeck[];
   records: readonly SessionRecord[];
   schedules: Readonly<Record<string, ReviewSchedule>>;
+  onBack: () => void;
+  onHistory: () => void;
+  onPractice: () => void;
+  onDeck: (id: string) => void;
+  onStudy: () => void;
   onNavigate: (key: NavigationKey) => void;
   languageControl?: ReactNode;
 }) {
-  const { t, formatNumber, formatPercent, formatDate, formatDateTime } = useTranslation();
+  const { t, formatNumber, formatPercent } = useTranslation();
   const [period, setPeriod] = useState('7');
   const navigation = useScrollNavigation({ bottomSafeAreaApplied: true });
   const now = useCurrentTime();
   const data = learningStatistics(decks, records, period === 'all' ? null : Number(period), now);
-  const maximum = Math.max(1, ...data.activity.map((day) => day.count));
-  const flashcardDecks = decks.filter((deck) => deck.cards.length);
+  const activity = studyActivity(records, period === '7' ? 7 : 30, now);
+  const streak = currentStudyStreak(records, now);
   const metrics = [
     {
-      label: t('learning.studyDays'),
-      value: formatNumber(data.studyDays),
-      background: colors.topic.orange.background,
-    },
-    {
-      label: t('learning.studied'),
-      value: formatNumber(data.cards),
-      background: colors.topic.green.background,
-    },
-    {
+      name: 'flashcards-vocabulary/remembered' as const,
       label: t('learning.accuracy'),
       value: data.accuracy === null ? '—' : formatPercent(data.accuracy),
-      background: colors.topic.blue.background,
+    },
+    {
+      name: 'flashcards-vocabulary/flashcard' as const,
+      label: t('learning.studied'),
+      value: formatNumber(data.cards),
+    },
+    {
+      name: 'quiz/quiz' as const,
+      label: t('learning.quizCount'),
+      value: formatNumber(data.quizzes),
     },
   ];
+  const flashcardDecks = decks.filter((deck) => deck.cards.length);
   return (
     <View style={{ flex: 1 }}>
       <Screen
@@ -69,14 +82,8 @@ export function ProgressScreen({
         onScroll={navigation.onScroll}
         bottomPadding={navigation.bottomPadding}
       >
-        <View style={styles.header}>
-          <IconButton icon="back" label={t('common.back')} onPress={() => onNavigate('home')} />
-          <AppText variant="h3" accessibilityRole="header" style={{ flex: 1 }}>
-            {t('learning.progress')}
-          </AppText>
-        </View>
+        <ProgressHeader title={t('learning.progress')} onBack={onBack} />
         <AppText tone="secondary">{t('learning.progressBody')}</AppText>
-        {languageControl}
         <SegmentedControl
           label={t('learning.progress')}
           value={period}
@@ -87,110 +94,95 @@ export function ProgressScreen({
             { value: 'all', label: t('learning.all') },
           ]}
         />
-        <View style={styles.metrics}>
-          {metrics.map((metric) => (
-            <View
-              key={metric.label}
-              style={[styles.metric, { backgroundColor: metric.background }]}
-            >
-              <AppText variant="h3">{metric.value}</AppText>
-              <AppText variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
-                {metric.label}
+        <View style={styles.summary}>
+          <View style={styles.row}>
+            <View style={styles.grow}>
+              <AppText variant="h4">{t('progress.summary')}</AppText>
+              <AppText variant="bodySmall" tone="secondary">
+                {t('learning.studyDays')}: {formatNumber(data.studyDays)}
               </AppText>
             </View>
-          ))}
-        </View>
-        <SectionHeading title={t('learning.activity')} decorate={false} />
-        <View style={styles.chart}>
-          {data.activity.map((day, index) => (
-            <View
-              key={day.timestamp}
-              style={styles.column}
-              accessibilityLabel={`${formatDate(day.timestamp)}: ${formatNumber(day.count)}`}
-            >
-              <AppText variant="caption">{formatNumber(day.count)}</AppText>
-              <View style={styles.track}>
-                <View
-                  style={{
-                    height: day.count ? `${(day.count / maximum) * 100}%` : 2,
-                    width: '100%',
-                    backgroundColor: day.count
-                      ? index === 6
-                        ? colors.explore.primary
-                        : colors.explore.green
-                      : colors.border.default,
-                    borderRadius: radius.sm,
-                  }}
-                />
+            {streak ? (
+              <View style={styles.streak}>
+                <ProgressIcon name="statistics-achievements/streak" />
+                <AppText variant="label" style={styles.orange}>
+                  {t('home.days', { count: streak })}
+                </AppText>
               </View>
-              <AppText variant="caption" tone="secondary">
-                {formatDate(day.timestamp, { weekday: 'short' })}
-              </AppText>
-            </View>
-          ))}
-        </View>
-        <SectionHeading title={t('learning.mastery')} decorate={false} />
-        {flashcardDecks.length ? (
-          flashcardDecks.map((deck) => (
-            <View key={deck.id} style={styles.deck}>
-              <AppText variant="label">{deck.title}</AppText>
-              <ProgressBar
-                value={deckReviewSummary(deck, schedules, now).remembered}
-                total={deck.cards.length}
-                label={t('learning.remembered')}
-                appearance="expressive"
-              />
-            </View>
-          ))
-        ) : (
-          <StateView
-            status="empty"
-            title={t(!decks.length ? 'library.emptyTitle' : 'learning.noFlashcards')}
-            message={t(!decks.length ? 'library.emptyDescription' : 'learning.noFlashcardsBody')}
-            actionLabel={t('library.create')}
-            onAction={() => onNavigate('create')}
-          />
-        )}
-        <SectionHeading title={t('learning.history')} decorate={false} />
-        {data.selected.length ? (
-          [...data.selected]
-            .sort((first, second) => second.finishedAt - first.finishedAt)
-            .slice(0, 10)
-            .map((record) => (
-              <View key={record.id} style={styles.deck}>
-                <AppText variant="label">
-                  {decks.find((deck) => deck.id === record.deckId)?.title}
-                </AppText>
-                <AppText variant="bodySmall" tone="secondary">
-                  {t(
-                    record.mode === 'quiz'
-                      ? 'learning.quiz'
-                      : record.mode === 'review'
-                        ? 'learning.review'
-                        : 'learning.flashcard',
-                  )}{' '}
-                  · {formatNumber(record.itemIds.length)} · {formatDuration(record.durationSeconds)}
-                </AppText>
+            ) : null}
+          </View>
+          <View style={styles.metrics}>
+            {metrics.map((metric) => (
+              <View key={metric.label} style={styles.metric}>
+                <ProgressIcon name={metric.name} />
+                <AppText variant="h3">{metric.value}</AppText>
                 <AppText variant="caption" tone="secondary">
-                  {formatDateTime(record.finishedAt)}
+                  {metric.label}
                 </AppText>
               </View>
-            ))
-        ) : (
+            ))}
+          </View>
+          {data.accuracy === null ? (
+            <AppText variant="caption" tone="secondary">
+              {t('progress.accuracyBody')}
+            </AppText>
+          ) : null}
+        </View>
+        {!data.selected.length ? (
           <StateView
             status="empty"
             title={t('learning.noHistory')}
             message={t('learning.noHistoryBody')}
+            actionLabel={t('session.startReview')}
+            onAction={onStudy}
           />
-        )}
+        ) : null}
+        <ActivityChart data={activity} />
+        <View style={styles.row}>
+          <AppText variant="h4" accessibilityRole="header" style={styles.grow}>
+            {t('learning.mastery')}
+          </AppText>
+          <Button label={t('progress.openHistory')} variant="link" onPress={onHistory} />
+        </View>
+        {flashcardDecks.map((deck) => (
+          <Pressable
+            key={deck.id}
+            accessibilityRole="button"
+            onPress={() => onDeck(deck.id)}
+            style={styles.deck}
+          >
+            <View style={styles.row}>
+              <View style={styles.cover}>
+                <ProgressIcon name="flashcards-vocabulary/flashcard" />
+              </View>
+              <View style={styles.grow}>
+                <AppText variant="label">{deck.title}</AppText>
+                <AppText variant="bodySmall" tone="secondary">
+                  {deck.subject}
+                </AppText>
+              </View>
+              <ProgressIcon name="navigation-system/forward" />
+            </View>
+            <ProgressBar
+              value={deckReviewSummary(deck, schedules, now).remembered}
+              total={deck.cards.length}
+              label={t('learning.remembered')}
+              tone="green"
+            />
+          </Pressable>
+        ))}
+        {!flashcardDecks.length ? (
+          <AppText variant="bodySmall" tone="secondary">
+            {t('learning.noFlashcardsBody')}
+          </AppText>
+        ) : null}
         <Button
-          label={t('learning.backLibrary')}
-          variant="tinted"
-          onPress={() => onNavigate('library')}
+          label={t('learning.needsPractice')}
+          variant="soft"
+          trailingIcon="arrow"
+          onPress={onPractice}
         />
-        <AppText variant="caption" tone="secondary">
-          {t('learning.sessionOnly')}
-        </AppText>
+        {languageControl}
       </Screen>
       <BottomNavigation
         active="profile"
@@ -204,29 +196,37 @@ export function ProgressScreen({
   );
 }
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  metric: {
-    flex: 1,
-    minWidth: 88,
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    gap: spacing.sm,
-  },
-  chart: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.xl,
+  row: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md },
+  grow: { flex: 1, minWidth: 0, gap: spacing.xs },
+  summary: {
     backgroundColor: colors.surface.card,
+    padding: spacing.xl,
     borderRadius: radius.card,
+    gap: spacing.xl,
   },
-  column: { flex: 1, minWidth: 18, alignItems: 'center', gap: spacing.sm },
-  track: { height: 120, width: '80%', justifyContent: 'flex-end' },
+  streak: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.soft,
+  },
+  orange: { color: colors.brand.deep },
+  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  metric: { flex: 1, minWidth: 80, padding: spacing.md, gap: spacing.md },
   deck: {
     backgroundColor: colors.surface.card,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    gap: spacing.md,
+    padding: spacing.xl,
+    borderRadius: radius.card,
+    gap: spacing.lg,
+  },
+  cover: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.brand.soft,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

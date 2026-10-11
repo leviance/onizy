@@ -1,4 +1,5 @@
 import type { LearningCard, LearningQuestion } from '@/domain/content/learning';
+import { toeicVocabularyCards } from './toeic-vocabulary.ts';
 
 /** Translated built-in examples; user-authored content is never rewritten. */
 export const englishDemoContent: Readonly<
@@ -111,16 +112,7 @@ export const englishDemoContent: Readonly<
     ],
   },
   toeic: {
-    cards: [
-      {
-        front: 'appointment',
-        back: 'A meeting arranged in advance.\n“I have an appointment at 10.”',
-      },
-      {
-        front: 'deadline',
-        back: 'The latest time something must be completed.\n“The deadline is Friday.”',
-      },
-    ],
+    cards: toeicVocabularyCards.en,
     questions: [
       {
         question: 'What does “deadline” mean?',
